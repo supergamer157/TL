@@ -2,17 +2,18 @@ import tensorflow as tf
 from tensorflow.keras import layers, models
 from tensorflow.keras.datasets import cifar10
 import numpy as np
+import matplotlib.pyplot as plt
 
 # Load and preprocess CIFAR-10
 (x_train, _), (x_test, _) = cifar10.load_data()
 x_train = x_train.astype('float32') / 255.0
 x_test = x_test.astype('float32') / 255.0
 
-# Convert RGB to grayscale (input)
+# Convert RGB to grayscale
 x_train_gray = tf.image.rgb_to_grayscale(x_train)
 x_test_gray = tf.image.rgb_to_grayscale(x_test)
 
-# Model: Autoencoder-style
+# Build the autoencoder model
 def build_colorization_model():
     input_img = layers.Input(shape=(32, 32, 1))  # Grayscale input
 
@@ -34,7 +35,7 @@ def build_colorization_model():
     model = models.Model(input_img, output_img)
     return model
 
-# Build and compile
+# Compile the model
 model = build_colorization_model()
 model.compile(optimizer='adam', loss='mse')
 
@@ -44,3 +45,33 @@ model.fit(x_train_gray, x_train, epochs=10, batch_size=128, validation_split=0.1
 # Evaluate
 loss = model.evaluate(x_test_gray, x_test)
 print(f"Test MSE: {loss:.4f}")
+
+# Predict on test set
+predicted_color = model.predict(x_test_gray)
+
+# Display grayscale input and colorized output
+def display_results(grayscale_imgs, predicted_imgs, original_imgs, n=5):
+    plt.figure(figsize=(15, 5))
+    for i in range(n):
+        # Grayscale image
+        ax = plt.subplot(3, n, i + 1)
+        plt.imshow(grayscale_imgs[i].reshape(32, 32), cmap='gray')
+        plt.title("Grayscale")
+        plt.axis("off")
+
+        # Colorized image (predicted)
+        ax = plt.subplot(3, n, i + 1 + n)
+        plt.imshow(predicted_imgs[i])
+        plt.title("Colorized")
+        plt.axis("off")
+
+        # Original image (ground truth)
+        ax = plt.subplot(3, n, i + 1 + 2 * n)
+        plt.imshow(original_imgs[i])
+        plt.title("Original")
+        plt.axis("off")
+    plt.tight_layout()
+    plt.show()
+
+# Display results
+display_results(x_test_gray.numpy(), predicted_color, x_test)
