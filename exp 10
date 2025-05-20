@@ -1,0 +1,46 @@
+import tensorflow as tf
+from tensorflow.keras import layers, models
+from tensorflow.keras.datasets import cifar10
+import numpy as np
+
+# Load and preprocess CIFAR-10
+(x_train, _), (x_test, _) = cifar10.load_data()
+x_train = x_train.astype('float32') / 255.0
+x_test = x_test.astype('float32') / 255.0
+
+# Convert RGB to grayscale (input)
+x_train_gray = tf.image.rgb_to_grayscale(x_train)
+x_test_gray = tf.image.rgb_to_grayscale(x_test)
+
+# Model: Autoencoder-style
+def build_colorization_model():
+    input_img = layers.Input(shape=(32, 32, 1))  # Grayscale input
+
+    # Encoder
+    x = layers.Conv2D(64, (3, 3), activation='relu', padding='same')(input_img)
+    x = layers.MaxPooling2D((2, 2), padding='same')(x)
+    x = layers.Conv2D(128, (3, 3), activation='relu', padding='same')(x)
+    x = layers.MaxPooling2D((2, 2), padding='same')(x)
+
+    # Decoder
+    x = layers.Conv2D(128, (3, 3), activation='relu', padding='same')(x)
+    x = layers.UpSampling2D((2, 2))(x)
+    x = layers.Conv2D(64, (3, 3), activation='relu', padding='same')(x)
+    x = layers.UpSampling2D((2, 2))(x)
+    
+    # Output layer with 3 channels (RGB)
+    output_img = layers.Conv2D(3, (3, 3), activation='sigmoid', padding='same')(x)
+
+    model = models.Model(input_img, output_img)
+    return model
+
+# Build and compile
+model = build_colorization_model()
+model.compile(optimizer='adam', loss='mse')
+
+# Train the model
+model.fit(x_train_gray, x_train, epochs=10, batch_size=128, validation_split=0.1)
+
+# Evaluate
+loss = model.evaluate(x_test_gray, x_test)
+print(f"Test MSE: {loss:.4f}")
